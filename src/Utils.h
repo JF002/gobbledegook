@@ -170,7 +170,8 @@ struct Utils
 	// Extracts a string from an array of bytes ("ay")
 	static std::string stringFromGVariantByteArray(const GVariant *pVariant);
 
-	// -----------------------------------------------------------------------------------------------------------------------------
+  static std::vector<uint8_t> byteVectorFromGVariantByteArray(const GVariant *pVariant);
+  // -----------------------------------------------------------------------------------------------------------------------------
 	// Endian conversion
 	//
 	// The Bluetooth Management API defines itself has using little-endian byte order. In the methods below, 'Hci' refers to this

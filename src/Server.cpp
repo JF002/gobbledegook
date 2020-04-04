@@ -375,33 +375,43 @@ namespace ggk {
             .gattCharacteristicEnd()
             .gattServiceEnd()
 
+            // BEGIN OF ALERT SERVICE
             .gattServiceBegin("alert", "1811")
-            .gattCharacteristicBegin("supported", "2A47", {"read"})
+            .gattCharacteristicBegin("supported_new_alert_category", "2A47", {"read"})
             .onReadValue(CHARACTERISTIC_METHOD_CALLBACK_LAMBDA {
-              //TODO
-              std::cout << "Read supported\n";
-              self.methodReturnVariant(pInvocation, ServerUtils::gvariantLocalTime(), true);
+              /* Return a bitfield (16bits) representing all categories that are supported. These are the
+               * notification types from NRF52 SDK:
+               * [0] Support for General text alert or non-text alert
+               * [1] Support for Alert when email messages arrives
+               * [2] Support for News feeds such as RSS, Atom
+               * [3] Support for Incoming call
+               * [4] Support for Missed call
+               * [5] Support for SMS/MMS message arrives
+               * [6] Support for Voice mail
+               * [7] Support for Alert occurred on calendar, planner
+               * [8] Support for Alert that should be handled as high priority
+               * [9] Support for Alert for incoming instant messages
+               * [10] Reserved for future use
+               */
+              std::vector<uint8_t> data;
+              data.resize(2);
+              // Return 0xff 0xff : all categories are supported
+              data[0] = 0xff;
+              data[1] = 0xff;
+
+              self.sendChangeNotificationValue(pConnection, data);
+              self.methodReturnValue(pInvocation, data, true);
             })
             .gattCharacteristicEnd()
-            .gattCharacteristicBegin("new", "2A46", {"notify"})
-            .gattDescriptorBegin("description", "2901", {"read"})
-
-                    // Standard descriptor "ReadValue" method call
-            .onReadValue(DESCRIPTOR_METHOD_CALLBACK_LAMBDA
-                         {
-                           std::cout << "Read new\n";
-                           const char *pDescription = "A mutable text string used for testing. Read and write to me, it tickles!";
-                           self.methodReturnValue(pInvocation, pDescription, true);
-                         })
-            .gattDescriptorEnd()
-//      .onEvent(30, nullptr, CHARACTERISTIC_EVENT_CALLBACK_LAMBDA
-//      {
-//        std::cout << "####################\n";
-//        std::vector<uint8_t> data {0x02, c++, 'C', 'O', 'U', 'C', 'O', 'U', '\0'};
-//        self.sendChangeNotificationValue(pConnection, data);
-//      })
+            .gattCharacteristicBegin("new_alert", "2A46", {"notify"})
             .onUpdatedValue(CHARACTERISTIC_UPDATED_VALUE_CALLBACK_LAMBDA
                             {
+              /* Notify that a new notification is available.
+               * The message contains a header of 2 bytes and then, the message content:
+               * [0] : category (see supported_new_alert_category above for the definition of the categories
+               * [1] : Number of new notification in this category
+               * [2..n] : Message content
+               * */
                               const char *pTextString = self.getDataPointer<const char *>("alert/new", "default");
                               auto msgSize = strlen(pTextString);
 
@@ -414,30 +424,53 @@ namespace ggk {
                                 data[i+2] = pTextString[i];
                               }
 
-
                               self.sendChangeNotificationValue(pConnection, data);
                               return true;
                             })
-                    // TODO notify
             .gattCharacteristicEnd()
-            .gattCharacteristicBegin("unread", "2A48", {"read"})
+            .gattCharacteristicBegin("supported_unread_alert_category", "2A48", {"read"})
             .onReadValue(CHARACTERISTIC_METHOD_CALLBACK_LAMBDA {
-              //TODO
-              std::cout << "Read unread\n";
-              self.methodReturnVariant(pInvocation, ServerUtils::gvariantLocalTime(), true);
+              /* Return a bitfield (16bits) representing all categories that are supported. These are the
+               * notification types from NRF52 SDK:
+               * [0] Support for General text alert or non-text alert
+               * [1] Support for Alert when email messages arrives
+               * [2] Support for News feeds such as RSS, Atom
+               * [3] Support for Incoming call
+               * [4] Support for Missed call
+               * [5] Support for SMS/MMS message arrives
+               * [6] Support for Voice mail
+               * [7] Support for Alert occurred on calendar, planner
+               * [8] Support for Alert that should be handled as high priority
+               * [9] Support for Alert for incoming instant messages
+               * [10] Reserved for future use
+               */
+              std::vector<uint8_t> data;
+              data.resize(2);
+              data[0] = 0xff;
+              data[1] = 0xff;
+
+              self.sendChangeNotificationValue(pConnection, data);
+              self.methodReturnValue(pInvocation, data, true);
             })
             .gattCharacteristicEnd()
-            .gattCharacteristicBegin("status", "2A45", {"notify"})
+            .gattCharacteristicBegin("unread_alert_status", "2A45", {"notify"})
                     // TODO notify
+                    // TODO ???
             .gattCharacteristicEnd()
-            .gattCharacteristicBegin("control", "2A44", {"write"})
-                    //TODO write
+            .gattCharacteristicBegin("alert_notification_control_point", "2A44", {"write"})
             .onWriteValue(CHARACTERISTIC_METHOD_CALLBACK_LAMBDA
                           {
-                            std::cout << "Write control\n";
+                            /* The control point allows the client to specify wich categories
+                             * it is interested in for new and unread notifications
+                             * The message contains 2 bytes :
+                             * [0] Command ID :
+                             *  - 0 = Unread alert categories
+                             *  - 1 = New alert categories
+                             * [1] A bitfield representing all categories it wants to receive (see the definition of categories above)
+                             * */
                             // Update the text string value
                             GVariant *pAyBuffer = g_variant_get_child_value(pParameters, 0);
-                            self.setDataPointer("text/string", Utils::stringFromGVariantByteArray(pAyBuffer).c_str());
+                            self.setDataValue("alert/control_point", Utils::byteVectorFromGVariantByteArray(pAyBuffer));
 
                             // Since all of these methods (onReadValue, onWriteValue, onUpdateValue) are all part of the same
                             // Characteristic interface (which just so happens to be the same interface passed into our self
@@ -450,6 +483,10 @@ namespace ggk {
                             self.methodReturnVariant(pInvocation, NULL);
                           })
             .gattCharacteristicEnd()
+
+            // END OF ALERT SERVICE
+
+
             .gattServiceEnd()
 
                     // Custom read/write text string service (00000001-1E3C-FAD4-74E2-97A033F1BFAA)

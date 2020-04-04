@@ -419,11 +419,20 @@ GVariant *Utils::gvariantFromByteArray(const gint64 data)
 // Extracts a string from an array of bytes ("ay")
 std::string Utils::stringFromGVariantByteArray(const GVariant *pVariant)
 {
-	gsize size;
-	gconstpointer pPtr = g_variant_get_fixed_array(const_cast<GVariant *>(pVariant), &size, 1);
-	std::vector<gchar> array(size + 1, 0);
-	memcpy(array.data(), pPtr, size);
-	return array.data();
+  gsize size;
+  gconstpointer pPtr = g_variant_get_fixed_array(const_cast<GVariant *>(pVariant), &size, 1);
+  std::vector<gchar> array(size + 1, 0);
+  memcpy(array.data(), pPtr, size);
+  return array.data();
+}
+
+std::vector<uint8_t> Utils::byteVectorFromGVariantByteArray(const GVariant *pVariant)
+{
+  gsize size;
+  gconstpointer pPtr = g_variant_get_fixed_array(const_cast<GVariant *>(pVariant), &size, 1);
+  std::vector<uint8_t> array(size + 1, 0);
+  memcpy(array.data(), pPtr, size);
+  return array;
 }
 
 }; // namespace ggk

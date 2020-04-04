@@ -96,6 +96,7 @@
 #include <iostream>
 #include <thread>
 #include <sstream>
+#include <vector>
 
 #include "../include/Gobbledegook.h"
 
@@ -232,6 +233,17 @@ int dataSetter(const char *pName, const void *pData)
     serverDataTextString = static_cast<const char *>(pData);
     LogDebug((std::string("Server data: text string set to '") + serverDataTextString + "'").c_str());
     return 1;
+  } else if (strName == "alert/control_point") {
+    auto data = static_cast<const std::vector<uint8_t>*>(pData);
+    auto size = data->size();
+    std::cout << "ControlPoint : Message size : " << size << std::endl;
+    std::cout << "ControlPoint : message data : ";
+    for(int i = 0; i < size; i ++) {
+      uint8_t b = data->at(i);
+      std::cout << std::to_string(b) << " - ";
+    }
+    std::cout << std::endl;
+    return 1;
   }
 
   LogWarn((std::string("Unknown name for server data setter request: '") + pName + "'").c_str());
@@ -316,7 +328,7 @@ int main(int argc, char **ppArgv)
     std::cout << "Notification :  ";
     std::getline(std::cin, serverNotification);
 
-    ggkNofifyUpdatedCharacteristic("/com/gobbledegook/alert/new");
+    ggkNofifyUpdatedCharacteristic("/com/gobbledegook/alert/new_alert");
 
     std::string dummy;
     std::getline(std::cin, dummy);
